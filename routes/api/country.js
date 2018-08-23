@@ -4,24 +4,45 @@ const mongoose = require('mongoose')
 const passport = require('passport')
 
 const validateCountryInput = require('../../validation/country')
-const UserCountry = require('../../models/Country')
+const Country = require('../../models/country')
 const User = require('../../models/User')
 
 // @route Get api/country/test
 // Desc Test for country routes
 // Access Public
 router.get('/test', (req, res) => res.json({
-  msg: 'Country works'
+  msg: 'country works'
 }))
 
-//*************** Country Modules ******************************************
-// @route POST api/profile/country
+//*************** country Modules ******************************************
+// @route POST api/country
 // Desc Add country to profile
 // Access Private
-router.post('/country', passport.authenticate('jwt', {
+router.get('/all', (req, res) => {
+  console.log('I am in all')
+  const errors = {}
+
+  Country.find()
+    //.populate('user', 'country')
+    .then(country => {
+      if (!country) {
+        errors.nocountry = 'There are no country'
+        res.status(404).json(errors)
+      }
+      res.json(country)
+    })
+    .catch(err => res.status(404).json({
+      msg: 'There are no country'
+    }))
+})
+
+
+// @route POST api/country
+// Desc Add country to profile
+// Access Private
+router.post('/', passport.authenticate('jwt', {
   session: false
 }), (req, res) => {
-  console.log('req.body.name: ' + req.body.country)
   const {
     errors,
     isValid
@@ -33,53 +54,53 @@ router.post('/country', passport.authenticate('jwt', {
     return res.status(400).json(errors)
   }
 
-  Profile.findOne({
-      user: req.user.id
-    })
-    .then(profile => {
-      const newCountry = {
-        country: req.body.country
-      }
+  // Get fields
+  const countryFields = {}
+  countryFields.user = req.user.id
+  if (req.body.country) countryFields.country = req.body.country
 
-      // Add to country array
-      profile.country.unshift(newCountry)
+  // const newCountry = { country: req.body.location }
 
-      // Save
-      profile.save()
-        .then(profile => res.json(profile))
-        .catch(err => res.status(404).json({
-          msg: 'Error in adding record'
-        }))
-    })
+  new Country(countryFields)
+    .save()
+    .then(country => res.json(country))
+    .catch(err => console.log(err))
 })
 
-// @route DELETE api/profile/country/:cou_id
+// @route DELETE api/country/:cou_id
 // Desc Delete country from profile
 // Access Private
-router.delete('/country/:cou_id',
+router.delete('/:cou_id',
   passport.authenticate('jwt', {
     session: false
   }), (req, res) => {
-    console.log('in country/:cou_id')
+    console.log('req.user.id: ' + req.user.id)
+    console.log('req.params.cou_id: ' + req.params.cou_id)
 
-    Profile.findOne({
+    Country.findOne({
         user: req.user.id
       })
-      .then(profile => {
-        // Get remove index
-        const removeIndex = profile.country
-          .map(item => item.id)
-          .indexOf(req.params.ins_id)
+      .then(country => {
+        Country.findById(req.params.cou_id)
+          .then(country => {
+            // check for post owner
+            if (country.user.toString() !== req.user.id) {
+              return res.status(401).json({
+                notauthorised: 'User not authorised'
+              })
+            }
 
-        // Splice out of array
-        profile.country.splice(removeIndex, 1)
-
-        // Save
-        profile.save()
-          .then(profile => res.json(profile))
-          .catch(err => res.status(404).json(err))
+            // Delete
+            country.remove().then(() => res.json({
+              success: true
+            }))
+          })
+          .catch(err => res.status(404).json({
+            postnotfound: 'No post found'
+          }))
       })
   })
-// ************************End of Country*************************************
+// ************************End of country**************************
+
 
 module.exports = router

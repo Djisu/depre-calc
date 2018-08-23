@@ -1,8 +1,10 @@
+// Declare the essentials for the application
 const express = require('express')
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
 const passport = require('passport')
 
+// Declare the entities needed for the routing
 const users = require('./routes/api/users')
 const profile = require('./routes/api/profile')
 const country = require('./routes/api/country')
@@ -10,7 +12,9 @@ const department = require('./routes/api/department')
 const fixedassets = require('./routes/api/fixedassets')
 const insurer = require('./routes/api/insurer')
 const location = require('./routes/api/location')
+const assettype = require('./routes/api/assettype')
 
+// Assign express to a variable
 const app = express()
 
 // Bodyparser Middleware
@@ -42,6 +46,7 @@ app.use('/api/department', department)
 app.use('/api/fixedassets', fixedassets)
 app.use('/api/insurer', insurer)
 app.use('/api/location', location)
+app.use('/api/assettype', assettype)
 
 const port = process.env.PORT || 5000
 

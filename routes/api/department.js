@@ -4,6 +4,7 @@ const mongoose = require('mongoose')
 const passport = require('passport')
 
 const validateDepartmentInput = require('../../validation/department')
+const Department = require('../../models/department')
 const User = require('../../models/User')
 
 // @route Get api/department/test
@@ -14,13 +15,34 @@ router.get('/test', (req, res) => res.json({
 }))
 
 //*************** Department Modules ******************************************
-// @route POST api/profile/department
+// @route POST api/department
 // Desc Add department to profile
 // Access Private
-router.post('/department', passport.authenticate('jwt', {
+router.get('/all', (req, res) => {
+  console.log('I am in all')
+  const errors = {}
+
+  Department.find()
+    //.populate('user', 'department')
+    .then(department => {
+      if (!department) {
+        errors.nodepartment = 'There are no department'
+        res.status(404).json(errors)
+      }
+      res.json(department)
+    })
+    .catch(err => res.status(404).json({
+      msg: 'There are no department'
+    }))
+})
+
+
+// @route POST api/department
+// Desc Add department to profile
+// Access Private
+router.post('/', passport.authenticate('jwt', {
   session: false
 }), (req, res) => {
-  console.log('req.body.name: ' + req.body.name)
   const {
     errors,
     isValid
@@ -32,53 +54,53 @@ router.post('/department', passport.authenticate('jwt', {
     return res.status(400).json(errors)
   }
 
-  Profile.findOne({
-      user: req.user.id
-    })
-    .then(profile => {
-      const newDepartment = {
-        department: req.body.department
-      }
+  // Get fields
+  const departmentFields = {}
+  departmentFields.user = req.user.id
+  if (req.body.department) departmentFields.department = req.body.department
 
-      // Add to department array
-      profile.department.unshift(newDepartment)
+  // const newLocation = { location: req.body.location }
 
-      // Save
-      profile.save()
-        .then(profile => res.json(profile))
-        .catch(err => res.status(404).json({
-          msg: 'Error in adding record'
-        }))
-    })
+  new Department(departmentFields)
+    .save()
+    .then(department => res.json(department))
+    .catch(err => console.log(err))
 })
 
-// @route DELETE api/profile/department/:dep_id
+// @route DELETE api/department/:dep_id
 // Desc Delete department from profile
 // Access Private
-router.delete('/department/:dep_id',
+router.delete('/:dep_id',
   passport.authenticate('jwt', {
     session: false
   }), (req, res) => {
-    console.log('in department/:dep_id' + req.params.dep_id)
+    console.log('req.user.id: ' + req.user.id)
+    console.log('req.params.dep_id: ' + req.params.dep_id)
 
-    Profile.findOne({
+    Department.findOne({
         user: req.user.id
       })
-      .then(profile => {
-        // Get remove index
-        const removeIndex = profile.department
-          .map(item => item.id)
-          .indexOf(req.params.dep_id)
+      .then(department => {
+        Department.findById(req.params.dep_id)
+          .then(department => {
+            // check for post owner
+            if (department.user.toString() !== req.user.id) {
+              return res.status(401).json({
+                notauthorised: 'User not authorised'
+              })
+            }
 
-        // Splice out of array
-        profile.department.splice(removeIndex, 1)
-
-        // Save
-        profile.save()
-          .then(profile => res.json(profile))
-          .catch(err => res.status(404).json(err))
+            // Delete
+            department.remove().then(() => res.json({
+              success: true
+            }))
+          })
+          .catch(err => res.status(404).json({
+            postnotfound: 'No post found'
+          }))
       })
   })
-// ************************End of Department*************************************
+// ************************End of Location**************************
+
 
 module.exports = router

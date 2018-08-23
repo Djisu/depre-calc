@@ -14,14 +14,35 @@ router.get('/test', (req, res) => res.json({
   msg: 'Insurer works'
 }))
 
-//*************** Insurer Modules ******************************************
+// @route Get api/location/all
+// Desc Get all locations
+// Access Public
+router.get('/all', (req, res) => {
+  console.log('I am in all')
+  const errors = {}
+
+  Insurer.find()
+    //.populate('user', 'location')
+    .then(insurers => {
+      if (!insurers) {
+        errors.noInsurer = 'There are no insurers'
+        res.status(404).json(errors)
+      }
+      res.json(insurers)
+    })
+    .catch(err => res.status(404).json({
+      msg: 'There are no insurers'
+    }))
+})
+
+//*************** Insurer Modules *********************************
 // @route POST api/insurer
 // Desc Add insurer to profile
 // Access Private
 router.post('/', passport.authenticate('jwt', {
   session: false
 }), (req, res) => {
-  console.log('In insurer')
+  // console.log('In insurer')
   const {
     errors,
     isValid
@@ -40,7 +61,7 @@ router.post('/', passport.authenticate('jwt', {
   if (req.body.email) insurerFields.email = req.body.email
   if (req.body.telno) insurerFields.telno = req.body.telno
 
-  new insurer(insurerFields)
+  new Insurer(insurerFields)
     .save()
     .then(insurer => res.json(insurer))
     .catch(err => console.log(err))
@@ -49,31 +70,36 @@ router.post('/', passport.authenticate('jwt', {
 // @route DELETE api/profile/insurer/:ins_id
 // Desc Delete insurer from profile
 // Access Private
-router.delete('/insurer/:ins_id',
+router.delete('/:ins_id',
   passport.authenticate('jwt', {
     session: false
   }), (req, res) => {
-    console.log('in insurer/:ins_id')
+    console.log('req.user.id: ' + req.user.id)
+    console.log('req.params.ins_id: ' + req.params.ins_id)
 
-    Profile.findOne({
+    Insurer.findOne({
         user: req.user.id
       })
-      .then(profile => {
-        // Get remove index
-        const removeIndex = profile.insurer
-          .map(item => item.id)
-          .indexOf(req.params.ins_id)
+      .then(insurer => {
+        Insurer.findById(req.params.ins_id)
+          .then(insurer => {
+            // check for insurer owner
+            if (insurer.user.toString() !== req.user.id) {
+              return res.status(401).json({
+                notauthorised: 'User not authorised'
+              })
+            }
 
-        // Splice out of array
-        profile.insurer.splice(removeIndex, 1)
-
-        // Save
-        profile.save()
-          .then(profile => res.json(profile))
-          .catch(err => res.status(404).json(err))
+            // Delete
+            insurer.remove().then(() => res.json({
+              success: true
+            }))
+          })
+          .catch(err => res.status(404).json({
+            insurernotfound: 'No insurer found'
+          }))
       })
   })
-
 
 // ************************End of Insurer*************************************
 

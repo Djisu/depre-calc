@@ -13,4 +13,4 @@ const AssettypeSchema = new Schema({
   }
 })
 
-module.exports = Assettype = mongoose.model('assettypes', AssetypeSchema)
+module.exports = Assettype = mongoose.model('assettypes', AssettypeSchema)
