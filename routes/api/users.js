@@ -20,19 +20,21 @@ router.get('/test', (req, res) => res.json({
   msg: 'Users works'
 }))
 
-// @route GET api/users/register
+// @route POST api/users/register
 // @tests Register users
 // @access public route
 router.post('/register', (req, res) => {
-  const { errors, isValid } = validateRegisterInput(req.body)
+  const { errors,isValid } = validateRegisterInput(req.body)
 
-// Check Validation
+  // Check Validation
   if (!isValid) {
     return res.status(400).json(errors)
   }
 
   // Find user by email, for validation purposes
-  User.findOne({ email: req.body.email })
+  User.findOne({
+      email: req.body.email
+    })
     .then(user => {
       if (user) {
         errors.email = 'Email already exists'
@@ -40,8 +42,8 @@ router.post('/register', (req, res) => {
       } else {
         const avatar = gravatar.url(req.body.email, {
           s: '200', // Size
-          r: 'pg',  // Ratings
-          d: 'mm'   // Default
+          r: 'pg', // Ratings
+          d: 'mm' // Default
         })
 
         const newUser = new User({
@@ -76,9 +78,12 @@ router.post('/register', (req, res) => {
 // @dec Login user /Returning JWT Token
 // @access public route
 router.post('/login', (req, res) => {
-  const { errors, isValid } = validateLoginInput(req.body)
+  const {
+    errors,
+    isValid
+  } = validateLoginInput(req.body)
 
-// Check Validation
+  // Check Validation
   if (!isValid) {
     return res.status(400).json(errors)
   }
@@ -87,41 +92,48 @@ router.post('/login', (req, res) => {
   const password = req.body.password
 
   // Find User by Email
-  User.findOne({email}).then(user => {
-     // Check for user
+  User.findOne({
+    email
+  }).then(user => {
+    // Check for user
     if (!user) {
       errors.email = 'User not found'
       return res.status(404).json(errors)
     }
 
-     // Check Password
+    // Check Password
     bcrypt.compare(password, user.password)
-       .then(IsMatch => {
-         if (IsMatch) {
-           // User matched
+      .then(IsMatch => {
+        if (IsMatch) {
+          // User matched
 
-           const payload = { id: user.id, name: user.name, avatar: user.avatar } // Create jwt payload
+          const payload = {
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar
+          } // Create jwt payload
 
-           // Sign token
-           jwt.sign(
-             payload,
-             keys.secretOrkey,
-             { expiresIn: 36000 },
-             (err, token) => {
-               if (err) {
-                 console.log(err)
-               }
-               //
-               res.json({
-                 success: true,
-                 token: 'Bearer ' + token
-               })
-             })
-         } else {
-           errors.password = 'Password incorrect'
-           res.status(400).json(errors)
-         }
-       })
+          // Sign token
+          jwt.sign(
+            payload,
+            keys.secretOrkey, {
+              expiresIn: 36000
+            },
+            (err, token) => {
+              if (err) {
+                console.log(err)
+              }
+              //
+              res.json({
+                success: true,
+                token: 'Bearer ' + token
+              })
+            })
+        } else {
+          errors.password = 'Password incorrect'
+          res.status(400).json(errors)
+        }
+      })
   }).catch(err => console.log(err))
 })
 
@@ -130,7 +142,9 @@ router.post('/login', (req, res) => {
 // @access private
 router.get(
   '/current',
-  passport.authenticate('jwt', { session: false }),
+  passport.authenticate('jwt', {
+    session: false
+  }),
   (req, res) => {
     res.json({
       id: req.user.id,

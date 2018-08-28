@@ -15,28 +15,8 @@ const FixedassetSchema = new Schema({
     type: String,
     required: true
   },
-  depretype: {
-    type: String,
-    required: true
-  },
-  deprerate: {
-    type: Number,
-    required: true
-  },
-  residamount: {
-    type: Number,
-    required: true
-  },
-  usefulyears: {
-    type: Number,
-    required: true
-  },
   assetcost: {
     type: Number,
-    required: true
-  },
-  purchasedate: {
-    type: Date,
     required: true
   },
   serialno: {
@@ -47,34 +27,32 @@ const FixedassetSchema = new Schema({
     type: String,
     required: true
   },
-  department: {
-    type: String,
-    required: true
-  },
   country: {
     type: String,
     required: true
   },
-  insureflag: {
-    type: String
+  owner: {
+    type: String,
+    required: true
   },
-  imageurl: {
-    type: String
+  gpsaddress: {
+    type: String,
+    required: true
   },
-  assetdebitcode: {
-    type: String
+  bank: {
+    type: String,
+    required: true
   },
-  assetcreditcode: {
-    type: String
+  cobegdate: {
+    type: Date,
+    required: true
   },
-  depreexpdebitcode: {
-    type: String
+  coenddate: {
+    type: Date,
+    required: true
   },
-  depreexpcreditcode: {
-    type: String
-  },
-  insurecost: {
-    type: Number,
+  status: {
+    type: String,
     required: true
   }
 })
