@@ -6,6 +6,7 @@ const passport = require('passport')
 
 // Load validation
 const validateProfileInput = require('../../validation/profile')
+const validateFixedassetsInput = require('../../validation/fixedassets')
 const Profile = require('../../models/Profile')
 const User = require('../../models/User')
 
@@ -30,6 +31,7 @@ router.get('/all', (req, res) => {
         errors.noprofile = 'There are no profiles'
         res.status(404).json(errors)
       }
+      console.log('profiles found')
       res.json(profiles)
     })
     .catch(err => res.status(404).json({
@@ -60,6 +62,23 @@ router.get('/', passport.authenticate('jwt', {
     .catch(err => res.status(404).json(err))
 })
 
+// @route GET api/profile/handle/:handle
+// @Get profile by handle
+// @accesse public
+router.get('/handle/:handle', (req, res) => {
+  const errors = {}
+  Profile.findOne({handle: req.params.handle})
+  .populate('user', ['name', 'avatar'])
+  .then(profile => {
+    if (!profile) {
+      errors.noprofile = 'There is no profile for this user'
+      return res.status(404).json(errors)
+    }
+    res.json(profile)
+  })
+  .catch(err => res.status(404).json(err))
+})
+
 // @route Get api/profile/user/:user_id
 // Desc Get profile by user id
 // Access Public
@@ -83,49 +102,109 @@ router.get('/user/:user_id', (req, res) => {
 // @route POST api/profile
 // Desc Create/Update user's profile
 // Access Private
-router.post('/', passport.authenticate('jwt', {
-  session: false
-}), (req, res) => {
-  const {
-    errors,
-    isValid
-  } = validateProfileInput(req.body)
+router.post(
+  '/',
+  passport.authenticate('jwt', { session: false }),
+  (req, res) => {
+    const { errors, isValid } = validateProfileInput(req.body)
+    // Check validation
+    if (!isValid) {
+      // Return any with errors status
+      return res.status(400).json(errors)
+    }
 
-  // Check validation
-  if (!isValid) {
-    // Return any errors with 400 status
-    return res.status(400).json(errors)
-  }
+    // GET fields
+    const profileFields = {}
+    profileFields.user = req.user.id
+    if (req.body.handle) profileFields.handle = req.body.handle
+    if (req.body.location) profileFields.location = req.body.location
+    if (req.body.country) profileFields.country = req.body.country
+    if (req.body.company) profileFields.company = req.body.company
 
-  // Get fields
-  const profileFields = {}
-  profileFields.user = req.user.id
-  if (req.body.location) profileFields.location = req.body.location
-  if (req.body.country) profileFields.country = req.body.country
-
-  Profile.findOne({
-      user: req.user.id
-    })
+    Profile.findOne({ user: req.user.id })
     .then(profile => {
       if (profile) {
-        // An update
-        Profile.findOneAndUpdate({
-            user: req.user.id
-          }, {
-            $set: profileFields
-          }, {
-            new: true
-          })
-          .then(profile => res.json(profile))
+        // Update profile
+        Profile.findOneAndUpdate(
+          { user: req.user.id },
+          { $set: profileFields },
+          { new: true }
+        )
+        .then(profile => res.json(profile))
+        .catch(err => res.json(err))
       } else {
-        // A create
-        // Save profile
-        // console.log('new Profile(profileFields).save().')
-        new Profile(profileFields).save()
+        // Create
+
+        // Check if handle exists
+        Profile.findOne({ handle: profileFields.handle }).then(profile => {
+          if (profile) {
+            errors.handle = 'That handle already exists'
+            res.status(400).json(errors)
+          }
+
+          // Save Profile
+          new Profile(profileFields).save()
           .then(profile => res.json(profile))
-          .catch(err => console.log(err))
+          .catch(err => res.json(err))
+        })
       }
     })
+    .catch(err => res.json(err))
+  }
+)
+
+// @routepost api/profile/fixedassets
+// @desc Add fixedassets to profile
+// @access public
+router.post('/fixedassets', passport.authenticate('jwt', { session: false }), (req, res) => {
+  const { errors, isValid } = validateFixedassetsInput(req.body)
+  // Check validation
+  if (!isValid) {
+    // Return any with errors status
+    return res.status(400).json(errors)
+  }
+  Profile.findOne({ user: req.user.id })
+  .then(profile => {
+    const newFix = {
+      assettype : req.body.assettype,
+      assetdesc : req.body.assetdesc,
+      assetcost : req.body.assetcost,
+      serialno : req.body.serialno,
+      location : req.body.location,
+      country : req.body.country,
+      owner : req.body.owner,
+      gpsaddress : req.body.gpsaddress,
+      bank : req.body.bank,
+      cobegdate : req.body.cobegdate,
+      coenddate : req.body.coenddate,
+      status : req.body.status,
+      imageurl : 'api/profile/fixedassets/' + req.body.imageurl
+    }
+    console.log('The image url is ' + 'api/profile/fixedassets/' + req.body.imageurl)
+    // Add to the fixedassets array
+    profile.fixedassets.unshift(newFix)
+    profile.save().then(profile => res.json(profile))
+  })
+  .catch(err => res.json(err))
+})
+
+// @route DELETE api/profile/fixedassets/:fix_id
+// @desc  Delete fixedassets from profile
+// @access private
+router.delete('/fixedassets/:fix_id', passport.authenticate('jwt', { session: false }),
+(req, res) => {
+  Profile.findOne({ user: req.user.id }).then(profile => {
+    // Get remove index
+    const removeIndex = profile.fixedassets
+      .map(item => item.id)
+      .indexOf(req.params.fix_id)
+
+     // Splice out of array
+    profile.fixedassets.splice(removeIndex, 1)
+
+    // Save
+    profile.save().then(profile => res.json(profile))
+  })
 })
 
 // @route DELETE api/profile

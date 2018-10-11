@@ -40,20 +40,20 @@ const FixedassetSchema = new Schema({
     required: true
   },
   bank: {
-    type: String,
-    required: true
+    type: String
   },
   cobegdate: {
-    type: Date,
-    required: true
+    type: Date
   },
   coenddate: {
-    type: Date,
-    required: true
+    type: Date
   },
   status: {
     type: String,
     required: true
+  },
+  imageurl: {
+    type: String
   }
 })
 

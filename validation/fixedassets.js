@@ -13,9 +13,6 @@ module.exports = function validateFixedassetsInput(data) {
   data.country = !isEmpty(data.country) ? data.country : ''
   data.owner = !isEmpty(data.owner) ? data.owner : ''
   data.gpsaddress = !isEmpty(data.gpsaddress) ? data.gpsaddress : ''
-  data.bank = !isEmpty(data.bank) ? data.bank : ''
-  data.cobegdate = !isEmpty(data.cobegdate) ? data.cobegdate : ''
-  data.coenddate = !isEmpty(data.coenddate) ? data.coenddate : ''
   data.status = !isEmpty(data.status) ? data.status : ''
 
   // Send message for empty field
@@ -46,22 +43,6 @@ module.exports = function validateFixedassetsInput(data) {
   }
   if (Validator.isEmpty(data.gpsaddress)) {
     errors.gpsaddress = 'GPS address is required'
-  }
-  if (Validator.isEmpty(data.bank)) {
-    errors.bank = 'The name of bank is required'
-  }
-
-  if (Validator.isEmpty(data.cobegdate)) {
-    errors.cobegdate = 'Colateral beginning date is required'
-  }
-  if (typeof data.cobegdate == Date) {
-    errors.cobegdate = 'Colateral beginning date must be date'
-  }
-  if (Validator.isEmpty(data.coenddate)) {
-    errors.coenddate = 'Colateral ending date is required'
-  }
-  if (typeof data.coenddate == Date) {
-    errors.coenddate = 'Colateral ending date must be date'
   }
 
   return {
