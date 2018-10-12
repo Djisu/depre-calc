@@ -41,13 +41,20 @@ class AddFixedassets extends Component {
   onSubmit (e) {
     e.preventDefault()
 
+    console.log('this.state.imageurl is ' + this.state.imageurl)
 
     var filename =  this.state.imageurl.split(/(\\|\/)/g).pop();
+    //console.log('file name is ' + filename);
+
+    const newImageURL =  'http://res.cloudinary.com/softplus-solutions/image/upload/' + filename 
+
+    console.log('newImageURL is : ' + newImageURL);
+
     this.setState({
-      imageurl: 'api/profile/fixedassets/' + filename
+      imageurl: newImageURL
     })
 
-    alert(this.state.imageurl);
+    console.log('this.state.imageurl is ' + this.state.imageurl);
 
     const fixData = {
       assettype: this.state.assettype,
@@ -62,7 +69,7 @@ class AddFixedassets extends Component {
       cobegdate: this.state.cobegdate,
       coenddate: this.state.coenddate,
       status: this.state.status,
-      imageurl: this.state.imageurl,
+      imageurl: newImageURL,
       errors: {}
     }
 

@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const mongoose = require('mongoose')
 const passport = require('passport')
-
+const cloudinary = require('cloudinary')
 
 // Load validation
 const validateProfileInput = require('../../validation/profile')
@@ -178,13 +178,23 @@ router.post('/fixedassets', passport.authenticate('jwt', { session: false }), (r
       cobegdate : req.body.cobegdate,
       coenddate : req.body.coenddate,
       status : req.body.status,
-      imageurl : 'api/profile/fixedassets/' + req.body.imageurl
+      imageurl :  req.body.imageurl
     }
-    console.log('The image url is ' + 'api/profile/fixedassets/' + req.body.imageurl)
+    const cImageUrl = req.body.imageurl
+
+    console.log('The image url is ' +  cImageUrl)
     // Add to the fixedassets array
     profile.fixedassets.unshift(newFix)
     profile.save().then(profile => res.json(profile))
-  })
+
+    //Send image to Cloudinary site
+    console.log('About to cloudinary image')
+    cloudinary.v2.uploader.upload('cImageUrl', 
+      function(error, result) {
+         console.log('in cloudinary.v2.uploader.upload')
+        console.log(result, error); 
+      });
+    })
   .catch(err => res.json(err))
 })
 
