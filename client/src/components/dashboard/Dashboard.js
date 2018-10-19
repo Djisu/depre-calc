@@ -2,19 +2,35 @@ import React, { Component } from 'react'
 import { Link } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
-import { getCurrentProfile, deleteAccount } from '../../actions/profileActions'
+import { getCurrentProfile, deleteAccount, getProfileByHandle } from '../../actions/profileActions'
 //import Spinner from '../common/Spinner'
 import ProfileActions from './ProfileActions'
 import Fixedassets from './Fixedassets'
 
 
 class Dashboard extends Component {
+  constructor() {
+    super();
+    this.state = {
+      getProfileHandle: "React"
+    };
+  }
+
+  handleChange(e) {
+    this.setState({getProfileHandle: e.target.value})
+
+  }
+
   componentDidMount () {
     this.props.getCurrentProfile()
   }
 
   onDeleteClick (e) {
     this.props.deleteAccount()
+  }
+
+  onSearchClick (e) {
+    this.props.getProfileByHandle(e.target.value)
   }
 
   render () {
@@ -32,6 +48,12 @@ class Dashboard extends Component {
             <p className='lead text-muted'>Welcome <Link to={`/profile/${profile.handle}`}>
               { user.name }</Link>
             </p>
+            <div>
+              Search Term: <input type="search" value={this.state.getProfileHandle} onChange={this.handleChange.bind(this)} />
+
+              <td><button onClick={this.onSearchClick.bind(this, fix._id)} className='btn btn-small' >Click to search</button></td>
+            </div>
+
             <ProfileActions />
             <Fixedassets fixedasset={profile.fixedassets} />
 
@@ -70,6 +92,7 @@ class Dashboard extends Component {
 
 Dashboard.propTypes = {
   getCurrentProfile: PropTypes.func.isRequired,
+  getProfileByHandle: PropTypes.func.isRequired,
   deleteAccount: PropTypes.func.isRequired,
   auth: PropTypes.object.isRequired,
   profile: PropTypes.object.isRequired
@@ -80,4 +103,8 @@ const mapStateToProps = state => ({
   auth: state.auth
 })
 
-export default connect(mapStateToProps, { getCurrentProfile, deleteAccount })(Dashboard)
+export default connect(mapStateToProps,
+  { getCurrentProfile, deleteAccount, getProfileByHandle })(Dashboard)
+
+
+

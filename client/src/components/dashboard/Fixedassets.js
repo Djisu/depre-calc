@@ -17,6 +17,7 @@ class Fixedassets extends Component {
               <td>{fix.assetdesc}</td>
               <td>{fix.location}</td>
               <td>{fix.country}</td>
+              <td><img src={fix.imageurl} alt='' /></td>
               <td><Moment format='YYYY/MM/DD'>{fix.cobegdate}</Moment> -
                 {fix.coenddate === null ? ('Now') :
                   (<Moment format='YYYY/MM/DD'>{fix.coenddate}</Moment>)
@@ -38,7 +39,7 @@ class Fixedassets extends Component {
                       <th>Description</th>
                       <th>Location</th>
                       <th>country</th>
-                      <th>Years</th>
+                      <th>Photo</th>
                       <th></th>
                     </tr>
                     {fixedasset}
