@@ -29,6 +29,7 @@ class Fixedassets extends Component {
 
         return (
             <div>
+
                 <h4 className='mb-4'>Asset details</h4>
                 <table className='table'>
                   <thead>

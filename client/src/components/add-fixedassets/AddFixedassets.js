@@ -41,20 +41,18 @@ class AddFixedassets extends Component {
   onSubmit (e) {
     e.preventDefault()
 
-    console.log('this.state.imageurl is ' + this.state.imageurl)
-
     var filename =  this.state.imageurl.split(/(\\|\/)/g).pop();
     //console.log('file name is ' + filename);
 
-    const newImageURL =  'http://res.cloudinary.com/softplus-solutions/image/upload/' + filename 
+    //const newImageURL =  filename //'https://api.cloudinary.com/v1_1/softplus-solutions/image/upload/' +
 
-    console.log('newImageURL is : ' + newImageURL);
+    console.log('newImageURL is : https://api.cloudinary.com/v1_1/softplus-solutions/image/upload/'  + filename);
 
     this.setState({
-      imageurl: newImageURL
+      imageurl :  filename
     })
 
-    console.log('this.state.imageurl is ' + this.state.imageurl);
+    //console.log('this.state.imageurl is ' + this.state.imageurl);
 
     const fixData = {
       assettype: this.state.assettype,
@@ -69,7 +67,7 @@ class AddFixedassets extends Component {
       cobegdate: this.state.cobegdate,
       coenddate: this.state.coenddate,
       status: this.state.status,
-      imageurl: newImageURL,
+      imageurl:  filename,
       errors: {}
     }
 
@@ -229,7 +227,7 @@ class AddFixedassets extends Component {
                       type="file"
                       placeholder='Select the name of the image of the asset'
                       name='imageurl'
-                      value={this.state.imageurl}
+                      value= {this.state.imageurl}
                       onChange={this.onChange}
                       error={errors.imageurl}
                       info='The url of the image of the asset'

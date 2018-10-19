@@ -163,7 +163,26 @@ router.post('/fixedassets', passport.authenticate('jwt', { session: false }), (r
     // Return any with errors status
     return res.status(400).json(errors)
   }
-  Profile.findOne({ user: req.user.id })
+
+  //Send image to Cloudinary site
+  console.log('About to cloudinary.config')
+
+  cloudinary.config({
+    cloud_name: "softplus-solutions",
+    api_key: "689541766938514",
+    api_secret: "h69UMbJr5skoFo2sP-IfPI8cyJM"
+  })
+
+  //console.log('About to cloudinary.v2.uploader.upload')
+  var newUrl
+  cloudinary.v2.uploader.upload(req.body.imageurl,
+    function(error, result) {
+      console.log(result, error);
+      console.log('image url is ' + result.url)
+
+//****************************************************************************************************
+console.log('About to start')
+Profile.findOne({ user: req.user.id })
   .then(profile => {
     const newFix = {
       assettype : req.body.assettype,
@@ -178,24 +197,50 @@ router.post('/fixedassets', passport.authenticate('jwt', { session: false }), (r
       cobegdate : req.body.cobegdate,
       coenddate : req.body.coenddate,
       status : req.body.status,
-      imageurl :  req.body.imageurl
+      imageurl : result.url //'https://api.cloudinary.com/v1_1/softplus-solutions/image/upload/'  + req.body.imageurl
     }
-    const cImageUrl = req.body.imageurl
 
-    console.log('The image url is ' +  cImageUrl)
+    console.log('result.url is:' +  result.url)
+
     // Add to the fixedassets array
     profile.fixedassets.unshift(newFix)
     profile.save().then(profile => res.json(profile))
-
-    //Send image to Cloudinary site
-    console.log('About to cloudinary image')
-    cloudinary.v2.uploader.upload('cImageUrl', 
-      function(error, result) {
-         console.log('in cloudinary.v2.uploader.upload')
-        console.log(result, error); 
-      });
     })
   .catch(err => res.json(err))
+
+console.log('End')
+//******************************************************************************* */
+
+      //req.body.imageurl =  result.url
+    });
+  //
+  //console.log('newUrl is: ' +  newUrl)
+
+  // Profile.findOne({ user: req.user.id })
+  // .then(profile => {
+  //   const newFix = {
+  //     assettype : req.body.assettype,
+  //     assetdesc : req.body.assetdesc,
+  //     assetcost : req.body.assetcost,
+  //     serialno : req.body.serialno,
+  //     location : req.body.location,
+  //     country : req.body.country,
+  //     owner : req.body.owner,
+  //     gpsaddress : req.body.gpsaddress,
+  //     bank : req.body.bank,
+  //     cobegdate : req.body.cobegdate,
+  //     coenddate : req.body.coenddate,
+  //     status : req.body.status,
+  //     imageurl : 'https://api.cloudinary.com/v1_1/softplus-solutions/image/upload/'  + req.body.imageurl
+  //   }
+
+  //   console.log('req.body.imageurl is:  https://api.cloudinary.com/v1_1/softplus-solutions/image/upload/'  + req.body.imageurl)
+
+  //   // Add to the fixedassets array
+  //   profile.fixedassets.unshift(newFix)
+  //   profile.save().then(profile => res.json(profile))
+  //   })
+  // .catch(err => res.json(err))
 })
 
 // @route DELETE api/profile/fixedassets/:fix_id
