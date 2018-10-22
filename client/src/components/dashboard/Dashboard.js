@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 import { getCurrentProfile, deleteAccount, getProfileByHandle } from '../../actions/profileActions'
-//import Spinner from '../common/Spinner'
+import Spinner from '../common/Spinner'
 import ProfileActions from './ProfileActions'
 import Fixedassets from './Fixedassets'
 
@@ -12,13 +12,10 @@ class Dashboard extends Component {
   constructor() {
     super();
     this.state = {
-      getProfileHandle: "React"
+      handle: ''
     };
-  }
 
-  handleChange(e) {
-    this.setState({getProfileHandle: e.target.value})
-
+    this.onChange= this.onChange.bind(this)
   }
 
   componentDidMount () {
@@ -30,7 +27,13 @@ class Dashboard extends Component {
   }
 
   onSearchClick (e) {
-    this.props.getProfileByHandle(e.target.value)
+    console.log('In onSearchClick')
+    this.props.getProfileByHandle(this.state.handle)
+    console.log('after getProfileByHandle')
+  }
+
+  onChange(e){
+    this.setState({handle: e.target.value})
   }
 
   render () {
@@ -40,6 +43,7 @@ class Dashboard extends Component {
     let dashboardContent
 
     if (profile === null || loading) {
+      dashboardContent = <Spinner />
     } else {
       // Check if logged in user has profile data
       if (Object.keys(profile).length > 0) {
@@ -49,9 +53,14 @@ class Dashboard extends Component {
               { user.name }</Link>
             </p>
             <div>
-              Search Term: <input type="search" value={this.state.getProfileHandle} onChange={this.handleChange.bind(this)} />
+              Search for Handle:
+                  <input
+                     type= "search"
+                     value= {this.state.handle}
+                     onChange= {this.onChange}
+                  />
 
-              <td><button onClick={this.onSearchClick.bind(this, fix._id)} className='btn btn-small' >Click to search</button></td>
+                  <button onClick={this.onSearchClick.bind(this, this.state.handle)} className='btn btn-small' >Click to search</button>
             </div>
 
             <ProfileActions />

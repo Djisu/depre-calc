@@ -20,7 +20,7 @@ class ProfileItem extends Component {
                   (<Moment format='YYYY/MM/DD'>{fix.coenddate}</Moment>)
                 }
               </td>
-              <td><img src={fix.imageurl} alt=''  /></td>
+              <td><img src={fix.imageurl} alt='' width='80'  height='80' /></td>
             </tr>
         ))
 
@@ -37,12 +37,12 @@ class ProfileItem extends Component {
                             <table className='table'>
                             <thead>
                                 <tr>
-                                <th>Owner</th>
-                                <th>Description</th>
-                                <th>Location</th>
-                                <th>country</th>
-                                <th>Years</th>
-                                <th>Asset Picture</th>
+                                    <th>Owner</th>
+                                    <th>Description</th>
+                                    <th>Location</th>
+                                    <th>country</th>
+                                    <th>Years</th>
+                                    <th>Photo</th>
                                 </tr>
                                 {fixedasset}
                             </thead>
