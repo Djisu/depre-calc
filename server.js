@@ -49,7 +49,7 @@ app.use('/api/insurer', insurer)
 app.use('/api/location', location)
 app.use('/api/assettype', assettype)
 
-// Server static assets
+// Server static assets if in production
 if(process.env.NODE_ENV === 'production'){
   // Set static folder
   app.use(express.static('client/build'))
