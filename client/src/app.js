@@ -21,7 +21,7 @@ import AddFixedassets from './components/add-fixedassets/AddFixedassets'
 import Profiles from './components/profiles/Profiles'
 import Profile from './components/profile/Profile'
 
-import App from './App.css';
+import './App.css'
 
 
 class App extends Component {
