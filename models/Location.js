@@ -3,14 +3,10 @@ const Schema = mongoose.Schema
 
 // create Schema: define fields
 const LocationSchema = new Schema({
-  user: {
-    type: Schema.Types.ObjectId,
-    ref: 'users'
-  },
-  location: {
+  location_desc: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 })
 
-module.exports = Location = mongoose.model('locations', LocationSchema)
+module.exports = mongoose.model('location', LocationSchema)

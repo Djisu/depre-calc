@@ -1,286 +1,328 @@
 const express = require('express')
 const router = express.Router()
-const mongoose = require('mongoose')
-const passport = require('passport')
-const cloudinary = require('cloudinary')
+const auth = require('../../middleware/auth')
+const { check, validationResult } = require('express-validator')
+const normalize = require('normalize-url')
+const checkObjectId = require('../../middleware/checkObjectId')
 
-// Load validation
-const validateProfileInput = require('../../validation/profile')
-const validateFixedassetsInput = require('../../validation/fixedassets')
 const Profile = require('../../models/Profile')
 const User = require('../../models/User')
 
-// @route Get api/profile/test
-// Desc Test for profile routes
-// Access Public
-router.get('/test', (req, res) => res.json({
-  msg: 'Profile works'
-}))
+// // @route  POST api/profile
+// // @desc   Test route
+// // @access Public
+// router.get('/', (req, res) => res.send('profile route'))
 
-// @route Get api/profile/all
-// Desc Get all profile
-// Access Public
-router.get('/all', (req, res) => {
-  console.log('I am in all')
-  const errors = {}
+// @route  GET api/profile/me
+// @desc   Get current user profile
+// @access Private
+router.get('/me', auth, async (req, res) => {
+  try {
+    const profile = await Profile.findOne({
+      user: req.user.id,
+    }).populate('user', ['name', 'avatar'])
 
-  Profile.find()
-    .populate('user', 'name avatar')
-    .then(profiles => {
-      if (!profiles) {
-        errors.noprofile = 'There are no profiles'
-        res.status(404).json(errors)
-      }
-      console.log('profiles found')
-      res.json(profiles)
-    })
-    .catch(err => res.status(404).json({
-      msg: 'There are no profiles'
-    }))
-})
-
-
-
-// @route Get api/profile
-// Desc Get current user's profile
-// Access Private
-router.get('/', passport.authenticate('jwt', {
-  session: false
-}), (req, res) => {
-  const errors = {}
-  Profile.findOne({
-      user: req.user.id
-    })
-    .populate('user', ['name', 'avatar'])
-    .then(profile => {
-      if (!profile) {
-        errors.noprofile = 'There is no profile for this user'
-        return res.status(404).json(errors)
-      }
-      res.json(profile)
-    })
-    .catch(err => res.status(404).json(err))
-})
-
-// @route GET api/profile/handle/:handle
-// @Get profile by handle
-// @accesse public
-router.get('/handle/:handle', (req, res) => {
-  const errors = {}
-  Profile.findOne({handle: req.params.handle})
-  .populate('user', ['name', 'avatar'])
-  .then(profile => {
     if (!profile) {
-      errors.noprofile = 'There is no profile for this user'
-      return res.status(404).json(errors)
+      return res.status(400).json({ msg: 'There is no profile for this user' })
     }
+
     res.json(profile)
-  })
-  .catch(err => res.status(404).json(err))
+  } catch (err) {
+    console.error(err.message)
+    res.status(500).send('Server Error')
+  }
 })
 
-// @route Get api/profile/user/:user_id
-// Desc Get profile by user id
-// Access Public
-router.get('/user/:user_id', (req, res) => {
-  const errors = {}
-  Profile.findOne({
-      user: req.params.user_id
-    })
-    .then(profile => {
-      if (!profile) {
-        errors.noprofile = 'There is no profile for this user'
-        return res.status(404).json(errors)
-      }
-      res.json(profile)
-    })
-    .catch(err => res.status(404).json({
-      msg: 'There is no profile for this user'
-    }))
-})
-
-// @route POST api/profile
-// Desc Create/Update user's profile
-// Access Private
+// @route  POST api/profile
+// @desc   Create or update a user profile
+// @access Private
 router.post(
   '/',
-  passport.authenticate('jwt', { session: false }),
-  (req, res) => {
-    const { errors, isValid } = validateProfileInput(req.body)
-    // Check validation
-    if (!isValid) {
-      // Return any with errors status
-      return res.status(400).json(errors)
+  [
+    auth,
+    [
+      check('status', 'Status is required').not().isEmpty(),
+      check('skills', 'Skills is required').not().isEmpty(),
+      check('endDate', 'Endding date is required').not().isEmpty(),
+      check('bio', 'bio is required').not().isEmpty(),
+      check('telno', 'Telephone number is required').not().isEmpty(),
+    ],
+  ],
+  async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() })
     }
 
-    // GET fields
-    const profileFields = {}
-    profileFields.user = req.user.id
-    if (req.body.handle) profileFields.handle = req.body.handle
-    if (req.body.location) profileFields.location = req.body.location
-    if (req.body.country) profileFields.country = req.body.country
-    if (req.body.company) profileFields.company = req.body.company
+    const {
+      company,
+      status,
+      skills,
+      bio,
+      images,
+      transDate,
+      endDate,
+      location,
+      telno,
+    } = req.body
 
-    Profile.findOne({ user: req.user.id })
-    .then(profile => {
+    // Build profile object
+    const profileFields = {}
+
+    profileFields.user = req.user.id
+
+    if (company) profileFields.company = company
+    if (status) profileFields.status = status
+    if (skills) {
+      profileFields.skills = skills.split(',').map((skill) => skill.trim())
+    }
+    if (bio) profileFields.bio = bio
+    if (images) profileFields.images = images
+
+    if (transDate) profileFields.transDate = transDate
+
+    if (endDate) profileFields.endDate = endDate
+
+    if (location) profileFields.location = location
+    if (telno) profileFields.telno = telno
+
+    try {
+      let profile = await Profile.findOne({ user: req.user.id })
+
       if (profile) {
-        // Update profile
-        Profile.findOneAndUpdate(
+        // Update
+        profile = await Profile.findOneAndUpdate(
           { user: req.user.id },
           { $set: profileFields },
-          { new: true }
+          { new: true },
         )
-        .then(profile => res.json(profile))
-        .catch(err => res.json(err))
-      } else {
-        // Create
-
-        // Check if handle exists
-        Profile.findOne({ handle: profileFields.handle }).then(profile => {
-          if (profile) {
-            errors.handle = 'That handle already exists'
-            res.status(400).json(errors)
-          }
-
-          // Save Profile
-          new Profile(profileFields).save()
-          .then(profile => res.json(profile))
-          .catch(err => res.json(err))
-        })
+        return res.json(profile)
       }
-    })
-    .catch(err => res.json(err))
-  }
+
+      // Create new profile
+      profile = new Profile(profileFields)
+
+      await profile.save()
+      return res.json(profile)
+    } catch (err) {
+      console.error(err.message)
+      res.status(500).send('Server Error')
+    }
+  },
 )
 
-// @routepost api/profile/fixedassets
-// @desc Add fixedassets to profile
-// @access public
-router.post('/fixedassets', passport.authenticate('jwt', { session: false }), (req, res) => {
-  const { errors, isValid } = validateFixedassetsInput(req.body)
-  // Check validation
-  if (!isValid) {
-    // Return any with errors status
-    return res.status(400).json(errors)
+// @route  GET api/profile/user/:user_id
+// @desc   GET all profiles
+// @access Public
+router.get('/', async (req, res) => {
+  try {
+    const profiles = await Profile.find().populate('user', ['name', 'avatar'])
+    res.json(profiles)
+  } catch (err) {
+    console.error(err.message)
+    res.status(500).send('Server Error')
   }
+})
 
-  //Send image to Cloudinary site
-  console.log('About to cloudinary.config')
+// @route  GET api/profile/user/:user_id
+// @desc   GET profile by user ID
+// @access Public
+router.get('/user/:user_id', async (req, res) => {
+  try {
+    const profile = await Profile.findOne({
+      user: req.params.user_id,
+    }).populate('user', ['name', 'avatar'])
 
-  cloudinary.config({
-    cloud_name: "softplus-solutions",
-    api_key: "689541766938514",
-    api_secret: "h69UMbJr5skoFo2sP-IfPI8cyJM"
-  })
+    if (!profile) return res.status(400).json({ msg: 'Profile not found' })
 
-  //console.log('About to cloudinary.v2.uploader.upload')
-  var newUrl
-  cloudinary.v2.uploader.upload(req.body.imageurl,
-    function(error, result) {
-      console.log(result, error);
-      console.log('image url is ' + result.url)
+    res.json(profile)
+  } catch (err) {
+    console.error(err.message)
 
-//****************************************************************************************************
-console.log('About to start')
-Profile.findOne({ user: req.user.id })
-  .then(profile => {
-    const newFix = {
-      assettype : req.body.assettype,
-      assetdesc : req.body.assetdesc,
-      assetcost : req.body.assetcost,
-      serialno : req.body.serialno,
-      location : req.body.location,
-      country : req.body.country,
-      owner : req.body.owner,
-      gpsaddress : req.body.gpsaddress,
-      bank : req.body.bank,
-      cobegdate : req.body.cobegdate,
-      coenddate : req.body.coenddate,
-      status : req.body.status,
-      imageurl : result.url //'https://api.cloudinary.com/v1_1/softplus-solutions/image/upload/'  + req.body.imageurl
+    if (err.kind == 'ObjectId') {
+      return res.status(400).json({ msg: 'Profile not found' })
+    }
+    res.status(500).send('Server Error')
+  }
+})
+
+// @route  DELETE api/profile
+// @desc   Delete profile, user & posts
+// @access Private
+router.delete('/', auth, async (req, res) => {
+  try {
+    // @todo - remove users posts
+
+    // Remove profile
+    await Profile.findOneAndRemove({ user: req.user.id })
+
+    // Remove user
+    await User.findOneAndRemove({ _id: req.user.id })
+    res.json({ msg: 'User deleted' })
+  } catch (err) {
+    console.error(err.message)
+    res.status(500).send('Server Error')
+  }
+})
+
+// @route  PUT api/profile/experience
+// @desc   Add profile experience
+// @access Private
+router.put(
+  '/experience',
+  [
+    auth,
+    check('title', 'Title is required').notEmpty(),
+    check('company', 'Company is required').notEmpty(),
+    check('from', 'From date is required and needs to be from the past')
+      .notEmpty()
+      .custom((value, { req }) => (req.body.to ? value < req.body.to : true)),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req)
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() })
     }
 
-    console.log('result.url is:' +  result.url)
+    const { title, customer, description } = req.body
 
-    // Add to the fixedassets array
-    profile.fixedassets.unshift(newFix)
-    profile.save().then(profile => res.json(profile))
-    })
-  .catch(err => res.json(err))
+    const newExp = {
+      title,
+      customer,
+      description,
+    }
 
-console.log('End')
-//******************************************************************************* */
+    try {
+      const profile = await Profile.findOne({ user: req.user.id }) //from token
 
-      //req.body.imageurl =  result.url
-    });
-  //
-  //console.log('newUrl is: ' +  newUrl)
+      profile.experience.unshift(newExp)
+      await profile.save()
 
-  // Profile.findOne({ user: req.user.id })
-  // .then(profile => {
-  //   const newFix = {
-  //     assettype : req.body.assettype,
-  //     assetdesc : req.body.assetdesc,
-  //     assetcost : req.body.assetcost,
-  //     serialno : req.body.serialno,
-  //     location : req.body.location,
-  //     country : req.body.country,
-  //     owner : req.body.owner,
-  //     gpsaddress : req.body.gpsaddress,
-  //     bank : req.body.bank,
-  //     cobegdate : req.body.cobegdate,
-  //     coenddate : req.body.coenddate,
-  //     status : req.body.status,
-  //     imageurl : 'https://api.cloudinary.com/v1_1/softplus-solutions/image/upload/'  + req.body.imageurl
-  //   }
+      res.json(profile)
+    } catch (err) {
+      if (err) {
+        console.error(err.message)
+        res.status(500).json({ msg: 'Server Error' })
+      }
+    }
+  },
+)
 
-  //   console.log('req.body.imageurl is:  https://api.cloudinary.com/v1_1/softplus-solutions/image/upload/'  + req.body.imageurl)
+// @route  DELETE api/profile/experience/:exp_id
+// @desc   Delete experience from profile
+// @access Private
+router.delete('/experience/:exp_id', auth, async (req, res) => {
+  try {
+    const profile = await Profile.findOne({ user: req.user.id })
 
-  //   // Add to the fixedassets array
-  //   profile.fixedassets.unshift(newFix)
-  //   profile.save().then(profile => res.json(profile))
-  //   })
-  // .catch(err => res.json(err))
-})
-
-// @route DELETE api/profile/fixedassets/:fix_id
-// @desc  Delete fixedassets from profile
-// @access private
-router.delete('/fixedassets/:fix_id', passport.authenticate('jwt', { session: false }),
-(req, res) => {
-  Profile.findOne({ user: req.user.id }).then(profile => {
     // Get remove index
-    const removeIndex = profile.fixedassets
-      .map(item => item.id)
-      .indexOf(req.params.fix_id)
+    const removeIndex = profile.experience
+      .map((item) => item.id)
+      .indexOf(req.params.exp_id)
 
-     // Splice out of array
-    profile.fixedassets.splice(removeIndex, 1)
+    profile.experience.splice(removeIndex, 1)
 
-    // Save
-    profile.save().then(profile => res.json(profile))
-  })
+    await profile.save()
+
+    res.json(profile)
+  } catch (err) {
+    console.error(err.message)
+
+    res.status(500).send('Server Error')
+  }
 })
 
-// @route DELETE api/profile
-// Desc Delete user and profile
-// Access Private
-router.delete('/',
-  passport.authenticate('jwt', {
-    session: false
-  }), (req, res) => {
-    Profile.findOneAndRemove({
-        user: req.user.id
-      })
-      .then(() => {
-        User.findOneAndRemove({
-            _id: req.user.id
-          })
-          .then(() => res.json({
-            success: true
-          }))
-      })
-  })
+// @route  POST api/profile/comment/:id
+// @desc   Comment on a profile
+// @access Private
+router.post(
+  '/comment/:id',
+  auth,
+  checkObjectId('id'),
+  check('text', 'Text is required').notEmpty(),
+  async (req, res) => {
+    const errors = validationResult(req)
 
+    console.log('in router.post(/comment/:id', req.params.id)
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() })
+    }
+
+    try {
+      const user = await User.findById(req.user.id).select('-password')
+      let profile = await Profile.findOne({ user: req.params.id })
+
+      // console.log('profile:', profile)
+
+      const newComment = {
+        text: req.body.text,
+        name: user.name,
+        avatar: user.avatar,
+        user: req.user.id,
+      }
+
+      profile.comments instanceof Array
+        ? profile.comments.unshift(newComment)
+        : (profile.comments = [newComment])
+
+      console.log('profile.comments:', profile.comments)
+
+      await profile.save()
+
+      res.json(profile.comments)
+    } catch (err) {
+      console.log(err.message)
+      res.status(500).send('Server Error')
+    }
+  },
+)
+
+// @route  DELETE api/profile/comment/:id/:comment_id
+// @desc   Delete comment
+// @access Private
+router.delete('/comment/:id/:comment_id', auth, async (req, res) => {
+  try {
+    //console.log('in router.delete(/comment/:id/:comment_id')
+    console.log('req.params.comment_id:', req.params.comment_id)
+
+    let user = await User.findById(req.user.id).select('-password')
+
+    console.log('user:', user)
+    let profile = await Profile.findOne({ user: req.user.id })
+
+    console.log('req.params:', req.params)
+
+    // Pull out comment
+    const comment = await profile.comments.find(
+      (comment) => comment.id === req.params.comment_id,
+    )
+    console.log('comment:', comment)
+
+    // Make sure comment exists
+    if (!comment) {
+      res.status(404).json({ msg: 'Comment does not exist' })
+    }
+
+    // Check user
+    if (comment.user.toString() !== req.user.id) {
+      res.status(401).json({ msg: 'User not authorised' })
+    }
+
+    // Get the removed index
+    const removeIndex = profile.comments
+      .map((comment) => comment.user.toString())
+      .indexOf(req.user.id)
+
+    profile.comments.splice(removeIndex, 1)
+
+    await profile.save()
+    res.json(profile.comments)
+  } catch (err) {
+    console.log(err.message)
+    res.status(500).send('Server Error')
+  }
+})
 
 module.exports = router

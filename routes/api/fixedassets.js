@@ -1,129 +1,298 @@
 const express = require('express')
 const router = express.Router()
-const mongoose = require('mongoose')
-const passport = require('passport')
-
-// Load validation
-const validateFixedassetsInput = require('../../validation/fixedassets')
+const auth = require('../../middleware/auth')
+const { check, validationResult } = require('express-validator')
 const Fixedassets = require('../../models/Fixedasset')
-const User = require('../../models/User')
+const nodemailer = require('nodemailer')
 
-// @route Get api/location/test
-// Desc Test for location routes
+// @route Get api/vendor/test
+// Desc Test for vendor routes
 // Access Public
-router.get('/test', (req, res) => res.json({
-  msg: 'fixedassets works'
-}))
+router.get('/test', (req, res) =>
+  res.json({
+    msg: 'fixedassets works',
+  }),
+)
 
-//*************** Fixedassets Modules ******************************************
-// @route Get api/fixedassets/all
-// Desc Get all fixedassets
-// Access Public
-router.get('/all', (req, res) => {
-  console.log('I am in all fixedassets')
-  const errors = {}
+// @route  GET api/fixedassets
+// @desc   GET all fixedassets
+// @access Public
+router.get('/', async (req, res) => {
+  try {
+    const fixedassets = await Fixedassets.find()
+    if (fixedassets) {
+      return res.json(fixedassets)
+    }
 
-  Fixedassets.find()
-    //.populate('user', 'fixedassets')
-    .then(fixedassets => {
-      if (!fixedassets) {
-        console.log('In  if (!fixedassets) {')
-        errors.nofixedassets = 'There are no fixedassets'
-        res.status(404).json(errors)
-      }
-      console.log('In  I have got it')
-      res.json(fixedassets)
-      console.log('fixed assets returned')
-    })
-    .catch(err => res.status(404).json({
-      msg: 'There are no fixedassets'
-    }))
+    res.status(401).send({ msg: 'fixedassets not found' })
+  } catch (err) {
+    console.error(err.message)
+    res.status(500).send('Server Error')
+  }
 })
 
+// @route  GET api/fixedassets/:id
+// @desc   GET all fixedassets
+// @access Public
+router.get('/:id', async (req, res) => {
+  try {
+    const fixedassets = await Fixedassets.find({ _id: req.params.id })
+    if (fixedassets) {
+      return res.json(fixedassets)
+    }
+
+    res.status(401).send({ msg: 'fixedassets not found' })
+  } catch (err) {
+    console.error(err.message)
+    res.status(500).send('Server Error')
+  }
+})
+
+// @route PUT api/fixedassets
+// Desc Add fixedassets
+// Access Private
+router.put(
+  '/',
+  [
+    auth,
+    [
+      check('asset_desc', 'Asset name is required').not().isEmpty(),
+      check('department', 'Department is required').not().isEmpty(),
+      check('custodian', 'Custodian of asset is required').not().isEmpty(),
+      check('location', 'location of asset is required').not().isEmpty(),
+      check('general_ledger_class', 'General ledger class is required')
+        .not()
+        .isEmpty(),
+      check('aquis_date', 'Asset purchase date is required').not().isEmpty(),
+      check('asset_cost', 'Asset purchase cost is required').not().isEmpty(),
+      check('depre_method', 'Asset depreciation method is required')
+        .not()
+        .isEmpty(),
+      check('salvage_value', 'Asset residual value is required')
+        .not()
+        .isEmpty(),
+      check('useful_years', 'Asset useful years is required').not().isEmpty(),
+      check('vendor_name', 'Asset vendor is required').not().isEmpty(),
+    ],
+  ],
+  async (req, res) => {
+    const errors = validationResult(req)
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() })
+    }
+
+    const {
+      asset_desc,
+      department,
+      custodian,
+      location,
+      general_ledger_class,
+      aquis_date,
+      asset_cost,
+      depre_method,
+      depre_rate,
+      salvage_value,
+      useful_years,
+      accum_depre,
+      vendor_name,
+      imageurl,
+      asset_status,
+      date,
+    } = req.body
+
+    try {
+      console.log('meow!!!!! PUT')
+
+      const fixedassetId = req.params.id
+      const fixedasset = await Fixedassets.findById(fixedassetId)
+
+      // Build vendor object
+      const fixedassetsFields = {}
+
+      if (fixedassetId) {
+        if (asset_desc) fixedassetsFields.asset_desc = asset_desc
+        if (department) fixedassetsFields.department = department
+        if (custodian) fixedassetsFields.custodian = custodian
+        if (location) fixedassetsFields.location = location
+        if (general_ledger_class)
+          fixedassetsFields.general_ledger_class = general_ledger_class
+        if (aquis_date) fixedassetsFields.aquis_date = aquis_date
+        if (asset_cost) fixedassetsFields.asset_cost = asset_cost
+
+        if (depre_method) fixedassetsFields.depre_method = depre_method
+        if (depre_rate) fixedassetsFields.depre_rate = depre_rate
+        if (salvage_value) fixedassetsFields.salvage_value = salvage_value
+        if (useful_years) fixedassetsFields.useful_years = useful_years
+        fixedassetsFields.accum_depre = 0
+        if (vendor_name) fixedassetsFields.vendor_name = vendor_name
+        if (imageurl) fixedassetsFields.imageurl = imageurl
+        fixedassetsFields.asset_status = true
+        fixedassetsFields.date = Date.now()
+
+        const updatedFixedassets = await fixedassets.save()
+
+        return res.json(fixedassets)
+      }
+    } catch (err) {
+      console.error(err.message)
+      res.status(500).send('Server Error')
+    }
+  },
+)
 
 // @route POST api/fixedassets
-// Desc Add fixedassets to profile
+// Desc Add fixedassets
 // Access Private
-router.post('/', passport.authenticate('jwt', {
-  session: false
-}), (req, res) => {
-  console.log('I am in post fixed assets')
-  const {
-    errors,
-    isValid
-  } = validateFixedassetsInput(req.body)
+router.post(
+  '/',
+  [
+    auth,
+    [
+      check('asset_desc', 'Asset name is required').not().isEmpty(),
+      check('department', 'Department is required').not().isEmpty(),
+      check('custodian', 'Custodian of asset is required').not().isEmpty(),
+      check('location', 'location of asset is required').not().isEmpty(),
+      check('general_ledger_class', 'General ledger class is required')
+        .not()
+        .isEmpty(),
+      check('aquis_date', 'Asset purchase date is required').not().isEmpty(),
+      check('asset_cost', 'Asset purchase cost is required').not().isEmpty(),
+      check('depre_method', 'Asset depreciation method is required')
+        .not()
+        .isEmpty(),
+      check('salvage_value', 'Asset residual value is required')
+        .not()
+        .isEmpty(),
+      check('useful_years', 'Asset useful years is required').not().isEmpty(),
+      check('vendor_name', 'Asset vendor is required').not().isEmpty(),
+    ],
+  ],
+  async (req, res) => {
+    const errors = validationResult(req)
 
-  // Check validation
-  if (!isValid) {
-    // Return any errors with 400 status
-    return res.status(400).json(errors)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() })
+    }
+
+    console.log('in fixedassets post')
+
+    const {
+      asset_desc,
+      department,
+      custodian,
+      location,
+      general_ledger_class,
+      aquis_date,
+      asset_cost,
+      depre_method,
+      depre_rate,
+      salvage_value,
+      useful_years,
+      accum_depre,
+      vendor_name,
+      imageurl,
+      asset_status,
+      date,
+    } = req.body
+
+    try {
+      console.log('meow!!!!! post')
+
+      // Build vendor object
+      const fixedassetsFields = {}
+
+      if (asset_desc) fixedassetsFields.asset_desc = asset_desc
+      if (department) fixedassetsFields.department = department
+      if (custodian) fixedassetsFields.custodian = custodian
+      if (location) fixedassetsFields.location = location
+      if (general_ledger_class)
+        fixedassetsFields.general_ledger_class = general_ledger_class
+      if (aquis_date) fixedassetsFields.aquis_date = aquis_date
+      if (asset_cost) fixedassetsFields.asset_cost = asset_cost
+
+      if (depre_method) fixedassetsFields.depre_method = depre_method
+      if (depre_rate) fixedassetsFields.depre_rate = depre_rate
+      if (salvage_value) fixedassetsFields.salvage_value = salvage_value
+      if (useful_years) fixedassetsFields.useful_years = useful_years
+      fixedassetsFields.accum_depre = 0
+      if (vendor_name) fixedassetsFields.vendor_name = vendor_name
+      if (imageurl) fixedassetsFields.imageurl = imageurl
+      fixedassetsFields.asset_status = true
+      fixedassetsFields.date = Date.now()
+
+      // Create new fixedassets
+      fixedassets = new Fixedassets(fixedassetsFields)
+      const createdFixedassets = await fixedassets.save()
+
+      return res.json(createdFixedassets)
+    } catch (err) {
+      console.error(err.message)
+      res.status(500).send('Server Error')
+    }
+  },
+)
+
+// @route DELETE api/fixedassets/:id
+// Desc Delete fixedassets
+// Access Private
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    await Fixedassets.deleteOne({ _id: req.params.id })
+    res.json({ msg: 'fixedassets deleted' })
+  } catch (err) {
+    console.error(err.message)
+    res.status(500).send('Server Error')
   }
-
-  // Get fields
-  const fixedassetsFields = {}
-  fixedassetsFields.user = req.user.id
-
-  console.log('in fixed assets backend')
-
-  if (req.body.assettype) fixedassetsFields.assettype = req.body.assettype
-  if (req.body.assetdesc) fixedassetsFields.assetdesc = req.body.assetdesc
-  if (req.body.assetcost) fixedassetsFields.assetcost = req.body.assetcost
-  if (req.body.serialno) fixedassetsFields.serialno = req.body.serialno
-  if (req.body.location) fixedassetsFields.location = req.body.location
-  if (req.body.country) fixedassetsFields.country = req.body.country
-  if (req.body.owner) fixedassetsFields.owner = req.body.owner
-  if (req.body.gpsaddress) fixedassetsFields.gpsaddress = req.body.gpsaddress
-  if (req.body.bank) fixedassetsFields.bank = req.body.bank
-  if (req.body.cobegdate) fixedassetsFields.cobegdate = req.body.cobegdate
-  if (req.body.coenddate) fixedassetsFields.coenddate = req.body.coenddate
-  if (req.body.status) fixedassetsFields.status = req.body.status
-  if (req.body.imageurl) fixedassetsFields.imageurl = req.body.imageurl
-
-  new Fixedassets(fixedassetsFields)
-    .save()
-    .then(fixedassets => res.json(fixedassets))
-    .catch(err => console.log(err))
-
 })
 
-// @route DELETE api/fixedassets/:fix_id
-// Desc Delete fixedassets from profile
-// Access Private
-router.delete('/:fix_id',
-  passport.authenticate('jwt', {
-    session: false
-  }), (req, res) => {
-    // console.log('req.user.id: ' + req.user.id)
-    // console.log('req.params.fix_id: ' + req.params.fix_id)
+router.get('/calcdepre', async (req, res) => {
+  // console.log('in calcdepre')
+  try {
+    let fixedassets = await Fixedassets.find()
 
-    Fixedassets.findOne({
-        user: req.user.id
+    if (fixedassets) {
+      let fdjson = JSON.parse(JSON.stringify(fixedassets))
+
+      let [
+        {
+          asset_desc,
+          department,
+          custodian,
+          location,
+          general_ledger_class,
+          aquis_date,
+          asset_cost,
+          depre_method,
+          depre_rate,
+          salvage_value,
+          useful_years,
+          accum_depre,
+          vendor_name,
+          imageurl,
+          asset_status,
+          date,
+        },
+      ] = fdjson
+
+      if ((depre_method = 'Straight Line')) {
+        accum_depre = (asset_cost - salvage_value) / useful_years
+      } else if ((depre_method = 'Diminishing Balance Method')) {
+        accum_depre = (asset_cost * depre_rate) / 100
+      }
+
+      // Update fixedasseds
+      fixedassets = await Fixedassets.updateMany({
+        $set: { accum_depre: accum_depre },
       })
-      .then(fixedassets => {
-        Fixedassets.findById(req.params.fix_id)
-          .then(fixedassets => {
-            // check for post owner
-            if (fixedassets.user.toString() !== req.user.id) {
-              return res.status(401).json({
-                notauthorised: 'User not authorised'
-              })
-            }
 
-            // Delete
-            fixedassets.remove().then(() => res.json({
-              success: true
-            }))
-          })
-          .catch(err => res.status(404).json({
-            fixedassetsnotfound: 'No fixedassets found'
-          }))
-      })
-  })
-
-
-// ************************End of Location**************************
+      return res.json(fixedassets)
+    }
+  } catch (err) {
+    console.error(err.message)
+    res.status(500).send('Server Error')
+  }
+})
 
 module.exports = router
-
-
-
+// ************************End of fixedassets**************************

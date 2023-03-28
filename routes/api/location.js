@@ -1,106 +1,102 @@
 const express = require('express')
 const router = express.Router()
-const mongoose = require('mongoose')
-const passport = require('passport')
-
-// Load validation
-const validateLocationInput = require('../../validation/location')
+const auth = require('../../middleware/auth')
+const { check, validationResult } = require('express-validator')
 const Location = require('../../models/Location')
 const User = require('../../models/User')
+const nodemailer = require('nodemailer')
 
-// @route Get api/location/test
-// Desc Test for location routes
+// @route Get api/assettype/test
+// Desc Test for country routes
 // Access Public
-router.get('/test', (req, res) => res.json({
-  msg: 'Location works'
-}))
+router.get('/test', (req, res) =>
+  res.json({
+    msg: 'location works',
+  }),
+)
 
-//*************** Location Modules ******************************************
-// @route Get api/location/all
-// Desc Get all locations
-// Access Public
-router.get('/all', (req, res) => {
-  console.log('I am in all')
-  const errors = {}
+// @route  GET api/location
+// @desc   GET all location
+// @access Public
+router.get('/', async (req, res) => {
+  try {
+    const location = await Location.find()
+    if (location) {
+      return res.json(location)
+    }
 
-  Location.find()
-    //.populate('user', 'location')
-    .then(locations => {
-      if (!locations) {
-        errors.nolocation = 'There are no locations'
-        res.status(404).json(errors)
-      }
-      res.json(locations)
-    })
-    .catch(err => res.status(404).json({
-      msg: 'There are no locations'
-    }))
+    res.status(401).send({ msg: 'location not found' })
+  } catch (err) {
+    console.error(err.message)
+    res.status(500).send('Server Error')
+  }
 })
-
 
 // @route POST api/location
-// Desc Add location to profile
+// Desc Add location
 // Access Private
-router.post('/', passport.authenticate('jwt', {
-  session: false
-}), (req, res) => {
-  const {
-    errors,
-    isValid
-  } = validateLocationInput(req.body)
+router.post(
+  '/',
+  [auth, [check('location_desc', 'Location is required').not().isEmpty()]],
+  async (req, res) => {
+    const errors = validationResult(req)
+    
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() })
+    }
 
-  // Check validation
-  if (!isValid) {
-    // Return any errors with 400 status
-    return res.status(400).json(errors)
+    const { location_desc } = req.body
+
+    // Build department object
+    const locationFields = {}
+
+    if (location_desc) locationFields.location_desc = location_desc
+
+    try {
+      let location = await Location.findOne({
+        location: req.body.location_desc,
+      })
+
+      if (location) {
+        // Update
+        console.log('in  !!!!!!', location)
+
+        location = await Location.findOneAndUpdate(
+          { location: req.body.location_desc },
+          { $set: locationFields },
+          { new: true },
+        )
+        return res.json(location)
+      }
+      console.log('meow!!!!!')
+
+      // Create new location
+      location = new Location(locationFields)
+
+      console.log('location is:', location)
+
+      await location.save()
+
+      return res.json(location)
+    } catch (err) {
+      console.error(err.message)
+      res.status(500).send('Server Error')
+    }
+  },
+)
+
+// @route DELETE api/location/:id
+// Desc Delete location
+// Access Private
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    await Location.deleteMany({ id: req.params._id })
+    res.json({ msg: 'Location deleted' })
+  } catch (err) {
+    console.error(err.message)
+    res.status(500).send('Server Error')
   }
-
-  // Get fields
-  const locationFields = {}
-  locationFields.user = req.user.id
-  if (req.body.location) locationFields.location = req.body.location
-
-  // const newLocation = { location: req.body.location }
-
-  new Location(locationFields)
-    .save()
-    .then(location => res.json(location))
-    .catch(err => console.log(err))
 })
 
-// @route DELETE api/location/:loc_id
-// Desc Delete insurer from profile
-// Access Private
-router.delete('/:loc_id',
-  passport.authenticate('jwt', {
-    session: false
-  }), (req, res) => {
-    console.log('req.user.id: ' + req.user.id)
-    console.log('req.params.loc_id: ' + req.params.loc_id)
-
-    Location.findOne({
-        user: req.user.id
-      })
-      .then(location => {
-        Location.findById(req.params.loc_id)
-          .then(location => {
-            // check for post owner
-            if (location.user.toString() !== req.user.id) {
-              return res.status(401).json({
-                notauthorised: 'User not authorised'
-              })
-            }
-
-            // Delete
-            location.remove().then(() => res.json({
-              success: true
-            }))
-          })
-          .catch(err => res.status(404).json({
-            postnotfound: 'No post found'
-          }))
-      })
-  })
-// ************************End of Location**************************
-
+// ************************End of location**************************
 module.exports = router

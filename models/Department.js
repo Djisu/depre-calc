@@ -3,14 +3,10 @@ const Schema = mongoose.Schema
 
 // create Schema: define fields
 const DepartmentSchema = new Schema({
-  user: {
-    type: Schema.Types.ObjectId,
-    ref: 'users'
-  },
-  department: {
+  dept_desc: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 })
 
 module.exports = Department = mongoose.model('departments', DepartmentSchema)

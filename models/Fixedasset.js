@@ -3,58 +3,69 @@ const Schema = mongoose.Schema
 
 // create Schema: define fields
 const FixedassetSchema = new Schema({
-  user: {
-    type: Schema.Types.ObjectId,
-    ref: 'users'
-  },
-  assettype: {
+  asset_desc: {
     type: String,
-    required: true
+    required: true,
   },
-  assetdesc: {
+  department: {
     type: String,
-    required: true
+    required: true,
   },
-  assetcost: {
-    type: Number,
-    required: true
-  },
-  serialno: {
+  custodian: {
     type: String,
-    required: true
+    required: true,
   },
   location: {
     type: String,
-    required: true
+    required: true,
   },
-  country: {
+  general_ledger_class: {
     type: String,
-    required: true
+    required: true,
   },
-  owner: {
+  aquis_date: {
+    type: Date,
+    required: true,
+  },
+  asset_cost: {
+    type: Number,
+    required: true,
+  },
+  depre_method: {
     type: String,
-    required: true
+    required: true,
   },
-  gpsaddress: {
+  depre_rate: {
+    type: Number,
+    required: true,
+  },
+  salvage_value: {
+    type: Number,
+    required: true,
+  },
+  useful_years: {
+    type: Number,
+    required: true,
+  },
+  accum_depre: {
+    type: Number,
+    required: true,
+  },
+  vendor_name: {
     type: String,
-    required: true
-  },
-  bank: {
-    type: String
-  },
-  cobegdate: {
-    type: Date
-  },
-  coenddate: {
-    type: Date
-  },
-  status: {
-    type: String,
-    required: true
+    required: true,
   },
   imageurl: {
-    type: String
-  }
+    type: String,
+  },
+  asset_status: {
+    type: Boolean,
+    default: true,
+  },
+  date: {
+    type: Date,
+    default: Date.now,
+  },
 })
 
 module.exports = Fixedasset = mongoose.model('fixedassets', FixedassetSchema)
